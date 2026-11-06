@@ -30,6 +30,7 @@ idea-pressure-tester/
 │   └── main.py           # Core AI evaluation engine & Standalone CLI
 ├── .env.example          # Environment variable template
 ├── .gitignore            # Protects credentials and local caches
+├── brain.md              # System architecture & engineering memory
 ├── LICENSE               # MIT License
 ├── requirements.txt      # Production dependencies
 └── README.md             # Project documentation
