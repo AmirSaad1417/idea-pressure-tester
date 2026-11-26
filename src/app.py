@@ -13,16 +13,13 @@ import importlib
 importlib.reload(main)
 from main import get_persona_reactions, get_web_search_summary
 
-st.set_page_config(page_title="Idea Pressure Tester", page_icon="💡", layout="wide")
+st.set_page_config(page_title="Idea Pressure Tester", page_icon="⚡", layout="wide")
 
 # Load environment variables
 load_dotenv()
 
-st.title("Idea Pressure Tester")
-st.caption("Pitch your idea. Four personas will judge it.")
-
-# 1. Teach mode checkbox at the top
-show_teach_mode = st.checkbox("Show me how it works")
+st.title("⚡ Idea Pressure Tester")
+st.caption("Pitch your startup idea. An AI board of four distinct expert personas will pressure-test it from every angle.")
 
 # Handle reset request before text_area widget is instantiated
 if st.session_state.get("reset_requested"):
@@ -34,34 +31,49 @@ if st.session_state.get("reset_requested"):
     st.session_state["search_request"] = {}
     st.session_state["reset_requested"] = False
 
-# Sidebar for API key status and optional input
+# Sidebar: Founder-centric guidance instead of technical jargon
 with st.sidebar:
-    st.header("⚙️ API Configuration")
+    st.header("🎯 Meet the Evaluation Panel")
+    st.markdown(
+        """
+        Instead of generic advice, your idea is rigorously judged by four distinct viewpoints:
+
+        - 📈 **Investor**: Evaluates total addressable market (TAM), unit economics, monetization, and exit potential.
+        - 🛡️ **Skeptic**: Uncovers fatal flaws, user acquisition bottlenecks, regulatory risks, and churn traps.
+        - 🎯 **Customer**: Judges everyday utility, friction points, and real willingness to pay.
+        - ⚔️ **Competitor**: Assesses defensibility, moats, and how existing market leaders will respond.
+        """
+    )
+
+    st.markdown("---")
+    st.subheader("💡 Pitching Tips")
+    st.markdown(
+        """
+        For the sharpest, most constructive critiques:
+        1. **Specify your target user** (e.g., college students, solo founders, dentists).
+        2. **Explain the urgent pain point** they face today.
+        3. **Describe your solution** and how you plan to charge.
+        """
+    )
+
+    # Optional configuration: only shown if no key is found or inside a quiet expander
     has_gemini = bool(os.getenv("GEMINI_API_KEY"))
     has_openai = bool(os.getenv("OPENAI_API_KEY"))
 
     if not has_gemini and not has_openai:
-        st.warning("⚠️ No API key found in `.env`")
-        st.markdown(
-            "Get a **100% free key** (no credit card needed) at:  \n"
-            "[👉 Google AI Studio](https://aistudio.google.com/)"
-        )
-        user_key = st.text_input("Paste Gemini API Key here:", type="password")
+        st.markdown("---")
+        st.warning("⚠️ No backend API key detected.")
+        user_key = st.text_input("Enter Gemini or OpenAI API Key:", type="password")
         if user_key.strip():
             os.environ["GEMINI_API_KEY"] = user_key.strip()
-            try:
-                env_path = Path(__file__).resolve().parent.parent / ".env"
-                with open(env_path, "w", encoding="utf-8") as f:
-                    f.write(f"GEMINI_API_KEY={user_key.strip()}\n")
-            except Exception:
-                pass
-            st.success("API Key saved! Ready to test.")
             st.rerun()
     else:
-        if os.getenv("OPENAI_API_KEY"):
-            st.success("Active Provider: OpenAI")
-        else:
-            st.success("Active Provider: Google Gemini (Free)")
+        with st.expander("⚙️ Advanced Settings (Optional)"):
+            st.caption("Backend is active and ready.")
+            custom_key = st.text_input("Use your own API key:", type="password")
+            if custom_key.strip():
+                os.environ["GEMINI_API_KEY"] = custom_key.strip()
+                st.success("Custom key applied!")
 
 # Initialize session state variables
 if "idea_input" not in st.session_state:
@@ -86,15 +98,16 @@ def set_example_idea(text: str):
 st.text_area(
     "Pitch your idea:",
     key="idea_input",
-    height=120,
-    placeholder="Describe your startup or product idea here...",
+    height=130,
+    placeholder="Example: An app that connects solo founders with accountability partners and tracks weekly milestone commitments...",
 )
 
-# Small clickable pill buttons below the textarea as example ideas
+# Clickable pill buttons for quick example ideas
+st.markdown("**Or explore an example:**")
 col1, col2, col3 = st.columns(3)
 with col1:
     st.button(
-        "An app that finds study partners nearby",
+        "📚 Study partners nearby",
         key="pill_1",
         on_click=set_example_idea,
         args=("An app that finds study partners nearby",),
@@ -102,7 +115,7 @@ with col1:
     )
 with col2:
     st.button(
-        "A subscription box for local street food",
+        "🍜 Street food subscription",
         key="pill_2",
         on_click=set_example_idea,
         args=("A subscription box for local street food",),
@@ -110,7 +123,7 @@ with col2:
     )
 with col3:
     st.button(
-        "AI that writes university assignment citations automatically",
+        "📑 Auto assignment citations",
         key="pill_3",
         on_click=set_example_idea,
         args=("AI that writes university assignment citations automatically",),
@@ -118,35 +131,33 @@ with col3:
     )
 
 st.write("")
-pressure_test_clicked = st.button("Pressure Test It", type="primary")
+pressure_test_clicked = st.button("🚀 Pressure Test It", type="primary")
 
 if pressure_test_clicked:
     current_idea = st.session_state.get("idea_input", "").strip()
     if not current_idea:
-        st.warning("Please enter an idea or select an example above first.")
+        st.warning("Please enter your startup idea or click one of the examples above first.")
     else:
         # 1. Persona reactions call
         try:
-            with st.spinner("Analyzing your idea..."):
+            with st.spinner("Convening the evaluation panel (Investor, Skeptic, Customer, Competitor)..."):
                 reactions = get_persona_reactions(current_idea)
                 st.session_state["reactions"] = reactions
-                # 2. Capture and store telemetry for teach mode
                 st.session_state["system_prompt"] = main.SYSTEM_PROMPT
                 st.session_state["raw_json_response"] = main.last_raw_json
         except Exception as e:
             st.error(f"Error during persona analysis: {e}")
             st.session_state["reactions"] = None
 
-        # 2. Web search summary call
+        # 2. Market landscape discovery call
         if st.session_state.get("reactions"):
             try:
-                with st.spinner("Searching the web..."):
+                with st.spinner("Scanning the competitive landscape for similar existing products..."):
                     summary = get_web_search_summary(current_idea)
                     st.session_state["web_summary"] = summary
-                    # 2. Capture search request for teach mode
                     st.session_state["search_request"] = main.last_search_request
             except Exception as e:
-                st.error(f"Error during web search: {e}")
+                st.error(f"Error during market discovery: {e}")
                 st.session_state["web_summary"] = "No closely similar products found."
 
 # Display persona responses and web search summary
@@ -154,47 +165,46 @@ if st.session_state.get("reactions"):
     reactions = st.session_state["reactions"]
 
     st.write("---")
+    st.subheader("📊 Panel Verdict")
+
     # 2x2 grid using st.columns
     # Row 1: Customer (info) & Investor (success)
     row1_col1, row1_col2 = st.columns(2)
     with row1_col1:
-        st.subheader("Customer")
+        st.subheader("🎯 Customer Reaction")
         st.info(reactions.get("customer", ""))
 
     with row1_col2:
-        st.subheader("Investor")
+        st.subheader("📈 Investor Verdict")
         st.success(reactions.get("investor", ""))
 
     # Row 2: Competitor (warning) & Skeptic (error)
     row2_col1, row2_col2 = st.columns(2)
     with row2_col1:
-        st.subheader("Competitor")
+        st.subheader("⚔️ Competitor Response")
         st.warning(reactions.get("competitor", ""))
 
     with row2_col2:
-        st.subheader("Skeptic")
+        st.subheader("🛡️ Skeptic's Warning")
         st.error(reactions.get("skeptic", ""))
 
-    # Web search summary
+    # Market landscape summary
     if st.session_state.get("web_summary"):
         st.write("---")
-        st.subheader("Similar ideas on the web")
+        st.subheader("🌐 Existing Market Landscape & Competitors")
         st.write(st.session_state["web_summary"])
 
-    # 3. Teach mode display if show_teach_mode is True
-    if show_teach_mode:
-        st.write("---")
-        with st.expander("Role prompting"):
-            st.code(st.session_state.get("system_prompt", ""))
-
-        with st.expander("Structured output"):
-            st.code(st.session_state.get("raw_json_response", ""), language="json")
-
-        with st.expander("Tool usage"):
-            st.code(json.dumps(st.session_state.get("search_request", {}), indent=2), language="json")
+    # Collapsible behind-the-scenes inspection for curious users & developers
+    with st.expander("🔍 Behind the Scenes (Prompt & Schema Inspector)"):
+        st.markdown("**Role Prompting Sent to AI:**")
+        st.code(st.session_state.get("system_prompt", ""))
+        st.markdown("**Structured JSON Output:**")
+        st.code(st.session_state.get("raw_json_response", ""), language="json")
+        st.markdown("**Market Discovery Query:**")
+        st.code(json.dumps(st.session_state.get("search_request", {}), indent=2), language="json")
 
     st.write("")
-    if st.button("Try another idea"):
+    if st.button("🔄 Try another idea"):
         st.session_state["reset_requested"] = True
         st.session_state["reactions"] = None
         st.session_state["web_summary"] = None
